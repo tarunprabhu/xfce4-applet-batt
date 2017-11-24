@@ -1,34 +1,32 @@
 plugindir = $(libdir)/xfce4/panel/plugins
-plugin_LTLIBRARIES = libgenmon.la
+plugin_LTLIBRARIES = libappletbatt.la
 
-libgenmon_la_CFLAGS =						\
+libappletbatt_la_CFLAGS =						\
 	-DPACKAGE_LOCALE_DIR=\"$(localedir)\"			\
 	@LIBXFCE4PANEL_CFLAGS@					\
-	@LIBXFCE4UI_CFLAGS@
+	@LIBXFCE4UI_CFLAGS@ -g
 
-libgenmon_la_LDFLAGS = 						\
+libappletbatt_LDFLAGS = 						\
 	-avoid-version 						\
 	-module 						\
 	-no-undefined 						\
 	-export-symbols-regex '^xfce_panel_module_(preinit|init|construct)'
 
-libgenmon_la_LIBADD =						\
+libappletbatt_la_LIBADD =						\
 	@LIBXFCE4PANEL_LIBS@					\
 	@LIBXFCE4UI_LIBS@
 
-libgenmon_la_SOURCES =		\
+libappletbatt_la_SOURCES =		\
 	main.c			\
 	config_gui.h		\
-	config_gui.c		\
-	cmdspawn.h		\
-	cmdspawn.c
+	config_gui.c
 
 desktopdir = $(datadir)/xfce4/panel/plugins
-desktop_DATA = genmon.desktop
+desktop_DATA = appletbatt.desktop
 @INTLTOOL_DESKTOP_RULE@
 
 EXTRA_DIST = 								\
-	genmon.desktop.in
+	appletbatt.desktop.in
 
 DISTCLEANFILES =							\
 	$(desktop_DATA)

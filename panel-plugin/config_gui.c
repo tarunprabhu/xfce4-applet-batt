@@ -51,18 +51,14 @@
 #define GLADE_HOOKUP_OBJECT_NO_REF(component,widget,name) \
   g_object_set_data (G_OBJECT (component), name, widget)
 
-int genmon_CreateConfigGUI (GtkWidget *vbox1,
+int battmon_CreateConfigGUI (GtkWidget *vbox1,
     struct gui_t *p_poGUI)
 {
     GtkWidget      *table1;
-    GtkWidget      *label1;
-    GtkWidget      *wTF_Cmd;
     GtkWidget      *eventbox1;    
     GtkAdjustment  *wSc_Period_adj;
     GtkWidget      *wSc_Period;
     GtkWidget      *label2;
-    GtkWidget      *wTB_Title;
-    GtkWidget      *wTF_Title;
     GtkWidget      *hseparator10;
     GtkWidget      *wPB_Font;
     GtkWidget      *hbox4;
@@ -72,20 +68,6 @@ int genmon_CreateConfigGUI (GtkWidget *vbox1,
     gtk_grid_set_row_spacing(GTK_GRID (table1), 2);
     gtk_widget_show (table1);
     gtk_box_pack_start (GTK_BOX (vbox1), table1, FALSE, TRUE, 0);
-
-    label1 = gtk_label_new (_("Command"));
-    gtk_widget_show (label1);
-    gtk_grid_attach (GTK_GRID (table1), label1, 0, 0, 1, 1);
-        //(GtkAttachOptions) (GTK_FILL),
-        //(GtkAttachOptions) (0), 0, 0);
-    gtk_label_set_justify (GTK_LABEL (label1), GTK_JUSTIFY_LEFT);
-    gtk_widget_set_valign (label1, GTK_ALIGN_CENTER);
-
-    wTF_Cmd = gtk_entry_new ();
-    gtk_widget_show (wTF_Cmd);
-    gtk_grid_attach (GTK_GRID (table1), wTF_Cmd, 1, 0, 1, 1);
-    gtk_widget_set_tooltip_text (wTF_Cmd, "Input the shell command to spawn, then press <Enter>");
-    gtk_entry_set_max_length (GTK_ENTRY (wTF_Cmd), 128);
 
     eventbox1 = gtk_event_box_new ();
     gtk_widget_show (eventbox1);
@@ -110,19 +92,6 @@ int genmon_CreateConfigGUI (GtkWidget *vbox1,
     gtk_label_set_justify (GTK_LABEL (label2), GTK_JUSTIFY_LEFT);
     gtk_widget_set_valign (label2, GTK_ALIGN_CENTER);
 
-    wTB_Title = gtk_check_button_new_with_mnemonic (_("Label"));
-    gtk_widget_show (wTB_Title);
-    gtk_grid_attach (GTK_GRID (table1), wTB_Title, 0, 1, 1, 1);
-    gtk_widget_set_tooltip_text (wTB_Title, "Tick to display label");
-
-    wTF_Title = gtk_entry_new ();
-    gtk_widget_show (wTF_Title);
-    gtk_grid_attach (GTK_GRID (table1), wTF_Title, 1, 1, 1, 1);
- 
-    gtk_widget_set_tooltip_text (wTF_Title, "Input the plugin label, then press <Enter>");
-    gtk_entry_set_max_length (GTK_ENTRY (wTF_Title), 16);
-    gtk_entry_set_text (GTK_ENTRY (wTF_Title), _("(genmon)"));
-
     hseparator10 = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
     gtk_widget_show (hseparator10);
     gtk_box_pack_start (GTK_BOX (vbox1), hseparator10, FALSE, FALSE, 0);
@@ -137,9 +106,6 @@ int genmon_CreateConfigGUI (GtkWidget *vbox1,
     gtk_container_add (GTK_CONTAINER (vbox1), hbox4);
     
     if (p_poGUI) {
-        COPYVAL (p_poGUI, wTF_Cmd);
-        COPYVAL (p_poGUI, wTB_Title);
-        COPYVAL (p_poGUI, wTF_Title);
         COPYVAL (p_poGUI, wSc_Period);
         COPYVAL (p_poGUI, wPB_Font);
     }

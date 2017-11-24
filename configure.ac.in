@@ -1,19 +1,17 @@
 dnl configure.ac
 dnl
-dnl xfce4-genmon-plugin - Generic Monitor plugin for xfce4-panel
+dnl xfce4-applet-batt - Battery Monitor plugin for xfce4-panel
 dnl
-dnl 2004 Roger Seguin <roger_seguin@msn.com>
-dnl 2006 Julien Devemy <jujucece@gmail.com>
-dnl 2016 Tony Paulic <tony.paulic@gmail.com>
+dnl 2016 Tarun Prabhu <tarun.prabhu@gmail.com>
 dnl
 
-m4_define([genmon_version],[4.0.1])
+m4_define([appletbatt_version],[4.0.1])
 
-AC_INIT([xfce4-genmon-plugin], [genmon_version],
-	[goodies-dev@xfce.org])
+AC_INIT([xfce4-applet-batt], [appletbatt_version],
+	[tarun.prabhu@gmail.org])
 
-GENMON_VERSION=genmon_version()
-AM_INIT_AUTOMAKE([xfce4-genmon-plugin], [$GENMON_VERSION])
+APPLETBATT_VERSION=appletbatt_version()
+AM_INIT_AUTOMAKE([xfce4-applet-batt], [$APPLETBATT_VERSION])
 AM_CONFIG_HEADER([config.h])
 
 AM_MAINTAINER_MODE
@@ -39,8 +37,8 @@ dnl configure the panel plugin
 XDT_CHECK_PACKAGE([LIBXFCE4PANEL], [libxfce4panel-2.0], [4.12.0])
 XDT_CHECK_PACKAGE([LIBXFCE4UI], [libxfce4ui-2], [4.12.0])
 
-dnl Translations
-XDT_I18N([@LINGUAS@])
+dnl dnl Translations
+dnl XDT_I18N([@LINGUAS@])
 
 dnl Check for debugging support
 XDT_FEATURE_DEBUG()
@@ -48,5 +46,4 @@ XDT_FEATURE_DEBUG()
 AC_OUTPUT([
 Makefile
 panel-plugin/Makefile
-po/Makefile.in
 ])

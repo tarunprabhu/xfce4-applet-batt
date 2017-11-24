@@ -34,9 +34,6 @@
 
 typedef struct gui_t {
     /* Configuration GUI widgets */
-    GtkWidget      *wTF_Cmd;
-    GtkWidget      *wTB_Title;
-    GtkWidget      *wTF_Title;
     GtkWidget      *wSc_Period;
     GtkWidget      *wPB_Font;
 } gui_t;
@@ -46,7 +43,7 @@ typedef struct gui_t {
 extern          "C" {
 #endif
 
-    int genmon_CreateConfigGUI (GtkWidget * ParentWindow,
+    int battmon_CreateConfigGUI (GtkWidget * ParentWindow,
         struct gui_t *gui);
     /* Create configuration/Option GUI */
     /* Return 0 on success, -1 otherwise */

@@ -1,0 +1,10 @@
+[Xfce Panel]
+Type=X-XFCE-PanelPlugin
+Encoding=UTF-8
+_Name=Battery Monitor
+_Comment=Displays the status of the battery
+Icon=battery
+X-XFCE-Module=appletbatt
+X-XFCE-Internal=false
+X-XFCE-API=2.0
+

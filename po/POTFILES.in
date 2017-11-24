@@ -1,4 +1,3 @@
-panel-plugin/cmdspawn.c
 panel-plugin/config_gui.c
 panel-plugin/main.c
-panel-plugin/genmon.desktop.in
+panel-plugin/appletbatt.desktop.in
