@@ -22,12 +22,13 @@ libappletbatt_la_SOURCES =		\
 	config_gui.c
 
 desktopdir = $(datadir)/xfce4/panel/plugins
-desktop_DATA = appletbatt.desktop
-@INTLTOOL_DESKTOP_RULE@
+desktop_DATA = applet-batt.desktop
 
 EXTRA_DIST = 								\
-	appletbatt.desktop.in
+	applet-batt.desktop.in
 
 DISTCLEANFILES =							\
 	$(desktop_DATA)
 
+%.desktop: %.desktop.in
+	cp $< $@

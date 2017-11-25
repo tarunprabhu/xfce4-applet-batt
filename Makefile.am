@@ -1,6 +1,6 @@
 @SET_MAKE@
 
-SUBDIRS = panel-plugin po
+SUBDIRS = panel-plugin
 
 AUTOMAKE_OPTIONS =							\
 	1.8								\
@@ -25,13 +25,5 @@ ChangeLog: Makefile
 dist-hook: ChangeLog
 
 EXTRA_DIST = 								\
-	README								\
-	intltool-extract.in						\
-	intltool-merge.in						\
-	intltool-update.in
-
-DISTCLEANFILES =							\
-	intltool-extract						\
-	intltool-merge							\
-	intltool-update
+	README
 
