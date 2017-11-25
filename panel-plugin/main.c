@@ -134,39 +134,59 @@ static battstatus_t GetBatteryStatus() {
   return BattStatus_NoBatt;
 }
 
-static int GetBatteryTime(int* hrs, int* mins) {
+static long ReadFile(const char* filename) {
+  long val = -1;
+  FILE* fp = NULL;
+  if(fp = fopen(filename, "r")) {
+    fscanf(fp, "%ld", &val);
+    fclose(fp);
+  }
+  return val;
+}
+
+static long ReadFileAlt(const char* filename1, const char* filename2) {
+  long val = -1;
+  val = ReadFile(filename1);
+  if(val == -1)
+    val = ReadFile(filename2);
+  return val;
+}
+
+static int GetBatteryTime(battstatus_t status, int* hrs, int* mins) {
   const char* fileCharge = "/sys/class/power_supply/BAT0/charge_now";
+  const char* fileChargeFull = "/sys/class/power_supply/BAT0/charge_full";
   const char* fileEnergy = "/sys/class/power_supply/BAT0/energy_now";
   const char* fileCurrent = "/sys/class/power_supply/BAT0/current_now";
   const char* filePower = "/sys/class/power_supply/BAT0/power_now";
-  FILE* fpTotal, *fpNow;
-  long total = 0, now = 1;
+  FILE *fpTotal = NULL;
+  FILE *fpNow = NULL;
+  long total = 0, now = 1, full = 0;
   double ratio = 0.0;
+  int read = 0;
 
-  if(fpTotal = fopen(fileCharge, "r"))
-    ;
-  else if(fpTotal = fopen(fileEnergy, "r"))
-    ;
+  if(status == BattStatus_Charging) {
+    total = ReadFile(fileCharge);
+    now = ReadFile(fileCurrent);
+    full = ReadFile(fileChargeFull);
+    if(total != -1 && now != -1 && full != -1) {
+      read = 1;
+      ratio = (float)(full - total) / (float) now;
+    }
+  } else if(status == BattStatus_Discharging) {
+    total = ReadFileAlt(fileCharge, fileEnergy);
+    now = ReadFileAlt(fileCurrent, filePower);
+    if(total != -1 && now != -1) {
+      read = 1;
+      ratio = (float) total / (float) now;
+    }
+  }
   
-  if(fpNow = fopen(fileCurrent, "r"))
-    ;
-  else if(fpNow = fopen(filePower, "r"))
-    ;
-  
-  if(fpTotal && fpNow) {
-    fscanf(fpTotal, "%ld", &total);
-    fscanf(fpNow, "%ld", &now);
-    ratio = (float) total / (float) now;
+  if(read) {
     *hrs = floor(ratio);
     *mins = floor((ratio - *hrs) * 60);
-
-    fclose(fpTotal);
-    fclose(fpNow);
-    
-    return 1;
   }
 
-  return 0;
+  return read;
 }
 
 /**************************************************************/
@@ -174,36 +194,41 @@ static int DisplayBatteryLevel(struct battmon_t *p_poPlugin)
 /* Launch the command, get its output and display it in the panel-docked
    text field */
 {
-  const char *colors[] = {
-    "#FF0000", "#FF1A00", "#FF3500", "#FF5000", "#FF6B00", "#FF8600", "#FFA100",
-    "#FFBB00", "#FFD600", "#FFF100", "#F1FF00", "#D6FF00", "#BBFF00", "#A1FF00",
-    "#86FF00", "#6BFF00", "#50FF00", "#35FF00", "#1AFF00", "#00FF00"};
-  int steps = 100 / (sizeof(colors) / sizeof(const char*));
+  const char *colors[20] = {"#FF0000", "#FF1A00", "#FF3500", "#FF5000",
+                            "#FF6B00", "#FF8600", "#FFA100", "#FFBB00",
+                            "#FFD600", "#FFF100", "#F1FF00", "#D6FF00",
+                            "#BBFF00", "#A1FF00", "#86FF00", "#6BFF00",
+                            "#50FF00", "#35FF00", "#1AFF00", "#00FF00"};
+  const int steps = 20;
   struct param_t *poConf = &(p_poPlugin->oConf.oParam);
   struct monitor_t *poMonitor = &(p_poPlugin->oMonitor);
-  const char* img_dir = "/usr/share/icons/hicolor/24x24/apps/xfce4-battery-";
-  const char* space = "                  ";
+  const char* img_dir = "/usr/share/icons/hicolor/24x24/apps/";
+  const char* img_prefix = "xfce4-battery-";
+  const char* space = "                ";
   int percent = 0, hrs = -1, mins = -1;
   battstatus_t status = BattStatus_NoBatt;
   char img[PATH_MAX];
-  char time[512];
+  char text[5] = "----";
+  char class[8];
+  const char* icon = NULL;
   
   percent = GetBatteryPercent();
   status = GetBatteryStatus();
   switch(status) {
   case BattStatus_Full:
-    snprintf(img, PATH_MAX, "%s%s.png", img_dir, "full-charging");
+    icon = "full-charging";
     break;
   case BattStatus_Charging:
     switch(GetBatteryLevel(percent)) {
     case BattLevel_Full:
-      snprintf(img, PATH_MAX, "%s%s.png", img_dir, "full-charging");
+      icon = "full-charging";
       break;
     case BattLevel_OK:
-      snprintf(img, PATH_MAX, "%s%s.png", img_dir, "ok-charging");
+      icon = "ok-charging";
       break;
     case BattLevel_Low:
-      snprintf(img, PATH_MAX, "%s%s.png", img_dir, "low-charging");
+    case BattLevel_Critical:
+      icon = "low-charging";
       break;
     default:
       /* Should never get here */
@@ -213,16 +238,16 @@ static int DisplayBatteryLevel(struct battmon_t *p_poPlugin)
   case BattStatus_Discharging:
     switch(GetBatteryLevel(percent)) {
     case BattLevel_Full:
-      snprintf(img, PATH_MAX, "%s%s.png", img_dir, "full");
+      icon = "full";
       break;
     case BattLevel_OK:
-      snprintf(img, PATH_MAX, "%s%s.png", img_dir, "ok");
+      icon = "ok";
       break;
     case BattLevel_Low:
-      snprintf(img, PATH_MAX, "%s%s.png", img_dir, "low");
+      icon = "low";
       break;
     case BattLevel_Critical:
-      snprintf(img, PATH_MAX, "%s%s.png", img_dir, "critical");
+      icon = "critical";
       break;
     default:
       /* Should never get here */
@@ -230,34 +255,36 @@ static int DisplayBatteryLevel(struct battmon_t *p_poPlugin)
     }
     break;
   case BattStatus_Unknown:
-    snprintf(img, PATH_MAX, "%s%s.png", img_dir, "missing");
+    icon = "missing";
     break;
   case BattStatus_NoBatt:
-    snprintf(img, PATH_MAX, "%s%s.png", img_dir, "missing");
+    icon = "missing"; 
     break;
   default:
     /* Should never get here */
     break;
   }
 
-  if(GetBatteryTime(&hrs, &mins)) {
-    const char* color = colors[percent / steps];
-    snprintf(time, sizeof(time),
-             "<span font='2' bgcolor='%s' weight='Bold'>%s</span>"
-             "\n"
-             "<span color='black' bgcolor='%s' weight='Bold'> %1d:%02d </span>"
-             "\n"
-             "<span font='2' bgcolor='%s' weight='Bold'>%s</span>",
-             color, space, color, hrs, mins, color, space);
+  
+  if(GetBatteryTime(status, &hrs, &mins)) {
+    if(status == BattStatus_Discharging) {
+      snprintf(class, sizeof(class), "p%d", percent/5);
+    } else {
+      snprintf(class, sizeof(class), "%s", "pgray");
+    }
+    snprintf(text, sizeof(text), "%1d:%02d", hrs, mins);
   } else {
-    if(status == BattStatus_Charging)
-      snprintf(time, sizeof(time),
-               "<span color='black' bgcolor='skyblue'>----</span>");
-    else
-      snprintf(time, sizeof(time),
-               "<span color='black' bgcolor='gray'>----</span>");
+    if(status == BattStatus_Charging) {
+      snprintf(class, sizeof(class), "%s", "pblue");
+    } else {
+      snprintf(class, sizeof(class), "%s", "pgray");
+    }
   }
-  gtk_label_set_markup(GTK_LABEL(poMonitor->wValue), time);
+
+  snprintf(img, PATH_MAX, "%s%s%s%s", img_dir, img_prefix, icon, ".png");
+
+  gtk_widget_set_name(poMonitor->wValue, class);
+  gtk_label_set_text(GTK_LABEL(poMonitor->wValue), text);
   gtk_image_set_from_file(GTK_IMAGE(poMonitor->wImage), img);
   
   gtk_widget_show(poMonitor->wImage);
@@ -376,12 +403,60 @@ static battmon_t *battmon_create_control(XfcePanelPlugin *plugin)
 #if GTK_CHECK_VERSION(3, 16, 0)
 #if GTK_CHECK_VERSION(3, 20, 0)
   css = g_strdup_printf("\
+            label { background-color: #0000FF; padding: 4px; } \
+            label#p0 { background-color: #FF0000; } \
+            label#p1 { background-color: #FF1A00; } \
+            label#p2 { background-color: #FF3500; } \
+            label#p3 { background-color: #FF5000; } \
+            label#p4 { background-color: #FF6B00; } \
+            label#p5 { background-color: #FF8600; } \
+            label#p6 { background-color: #FFA100; } \
+            label#p7 { background-color: #FFBB00; } \
+            label#p8 { background-color: #FFD600; } \
+            label#p9 { background-color: #FFF100; } \
+            label#p10 { background-color: #F1FF00; } \
+            label#p11 { background-color: #D6FF00; } \
+            label#p12 { background-color: #BBFF00; } \
+            label#p13 { background-color: #A1FF00; } \
+            label#p14 { background-color: #86FF00; } \
+            label#p15 { background-color: #6BFF00; } \
+            label#p16 { background-color: #50FF00; } \
+            label#p17 { background-color: #35FF00; } \
+            label#p18 { background-color: #1AFF00; } \
+            label#p19 { background-color: #00FF00; } \
+            label#p20 { background-color: #00FF00; } \
+            label#pblue { background-color: skyblue; } \
+            label#pgray { background-color: darkgray; } \
             progressbar.horizontal trough { min-height: 6px; }\
             progressbar.horizontal progress { min-height: 6px; }\
             progressbar.vertical trough { min-width: 6px; }\
             progressbar.vertical progress { min-width: 6px; }");
 #else
   css = g_strdup_printf("\
+            label { background-color: #0000FF; padding: 4px; } \
+            label#p0 { background-color: #FF0000; } \
+            label#p1 { background-color: #FF1A00; } \
+            label#p2 { background-color: #FF3500; } \
+            label#p3 { background-color: #FF5000; } \
+            label#p4 { background-color: #FF6B00; } \
+            label#p5 { background-color: #FF8600; } \
+            label#p6 { background-color: #FFA100; } \
+            label#p7 { background-color: #FFBB00; } \
+            label#p8 { background-color: #FFD600; } \
+            label#p9 { background-color: #FFF100; } \
+            label#p10 { background-color: #F1FF00; } \
+            label#p11 { background-color: #D6FF00; } \
+            label#p12 { background-color: #BBFF00; } \
+            label#p13 { background-color: #A1FF00; } \
+            label#p14 { background-color: #86FF00; } \
+            label#p15 { background-color: #6BFF00; } \
+            label#p16 { background-color: #50FF00; } \
+            label#p17 { background-color: #35FF00; } \
+            label#p18 { background-color: #1AFF00; } \
+            label#p19 { background-color: #00FF00; } \
+            label#p20 { background-color: #00FF00; } \
+            label#pblue { background-color: skyblue; } \
+            label#pgray { background-color: darkgray; } \
             .progressbar.horizontal trough { min-height: 6px; }\
             .progressbar.horizontal progress { min-height: 6px; }\
             .progressbar.vertical trough { min-width: 6px; }\
