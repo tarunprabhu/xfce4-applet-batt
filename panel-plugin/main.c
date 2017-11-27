@@ -5,6 +5,7 @@
  *                                  <http://rmlx.dyndns.org>
  *  Copyright (c) 2006 Julien Devemy <jujucece@gmail.com>
  *  Copyright (c) 2012 John Lindgren <john.lindgren@aol.com>
+ *  Copyright (c) 2017 Tarun Prabhu <tarun.prabhu@gmail.com>
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -20,8 +21,6 @@
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
-#include "config_gui.h"
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -41,6 +40,12 @@
 
 #define PLUGIN_NAME "Battmon"
 #define BORDER 2
+
+typedef struct gui_t {
+    /* Configuration GUI widgets */
+    GtkWidget      *wSc_Period;
+    GtkWidget      *wPB_Font;
+} gui_t;
 
 typedef struct param_t {
   /* Configurable parameters */
@@ -155,26 +160,25 @@ static long ReadFileAlt(const char* filename1, const char* filename2) {
 }
 
 static int GetBatteryTime(battstatus_t status, int* hrs, int* mins) {
-  const char* fileCharge = "/sys/class/power_supply/BAT0/charge_now";
+  const char* fileCharge     = "/sys/class/power_supply/BAT0/charge_now";
   const char* fileChargeFull = "/sys/class/power_supply/BAT0/charge_full";
-  const char* fileEnergy = "/sys/class/power_supply/BAT0/energy_now";
-  const char* fileCurrent = "/sys/class/power_supply/BAT0/current_now";
-  const char* filePower = "/sys/class/power_supply/BAT0/power_now";
+  const char* fileEnergy     = "/sys/class/power_supply/BAT0/energy_now";
+  const char* fileEnergyFull = "/sys/class/power_supply/BAT0/energy_full";
+  const char* fileCurrent    = "/sys/class/power_supply/BAT0/current_now";
+  const char* filePower      = "/sys/class/power_supply/BAT0/power_now";
   long total = 0, now = 1, full = 0;
   double ratio = 0.0;
   int read = 0;
 
+  total = ReadFileAlt(fileCharge, fileEnergy);
+  now = ReadFileAlt(fileCurrent, filePower);
   if(status == BattStatus_Charging) {
-    total = ReadFile(fileCharge);
-    now = ReadFile(fileCurrent);
-    full = ReadFile(fileChargeFull);
+    full = ReadFileAlt(fileChargeFull, fileEnergyFull);
     if(total != -1 && now != -1 && full != -1 && now > 0) {
       read = 1;
       ratio = (float)(full - total) / (float) now;
     }
   } else if(status == BattStatus_Discharging) {
-    total = ReadFileAlt(fileCharge, fileEnergy);
-    now = ReadFileAlt(fileCurrent, filePower);
     if(total != -1 && now != -1 && now > 0) {
       read = 1;
       ratio = (float) total / (float) now;
@@ -248,7 +252,7 @@ static int DisplayBatteryLevel(struct battmon_t *p_poPlugin)
     icon = "battery-full-charged";
     break;
   case BattStatus_NoBatt:
-    icon = "battery-missing"; 
+    icon = "battery-missing";
     break;
   default:
     /* Should never get here */
@@ -583,12 +587,10 @@ static void battmon_read_config(XfcePanelPlugin *plugin, battmon_t *poPlugin)
   }
 
   xfce_rc_close(rc);
-} /* battmon_read_config() */
+}
 
-static void battmon_write_config(XfcePanelPlugin *plugin, battmon_t *poPlugin)
-/* Plugin API */
-/* Write plugin configuration into xml file */
-{
+
+static void battmon_write_config(XfcePanelPlugin *plugin, battmon_t *poPlugin) {
   struct param_t *poConf = &(poPlugin->oConf.oParam);
   XfceRc *rc;
   char *file;
@@ -609,13 +611,9 @@ static void battmon_write_config(XfcePanelPlugin *plugin, battmon_t *poPlugin)
   xfce_rc_write_entry(rc, "Font", poConf->acFont);
 
   xfce_rc_close(rc);
-} /* battmon_write_config() */
+}
 
-/**************************************************************/
-
-static void SetPeriod(GtkWidget *p_wSc, void *p_pvPlugin)
-/* Set the update period - To be used by the timer */
-{
+static void SetPeriod(GtkWidget *p_wSc, void *p_pvPlugin) {
   struct battmon_t *poPlugin = (battmon_t *)p_pvPlugin;
   struct param_t *poConf = &(poPlugin->oConf.oParam);
   float r;
@@ -623,13 +621,9 @@ static void SetPeriod(GtkWidget *p_wSc, void *p_pvPlugin)
   TRACE("SetPeriod()\n");
   r = gtk_spin_button_get_value(GTK_SPIN_BUTTON(p_wSc));
   poConf->iPeriod_ms = (r * 1000);
-} /* SetPeriod() */
+}
 
-/**************************************************************/
-
-static void UpdateConf(void *p_pvPlugin)
-/* Called back when the configuration/options window is closed */
-{
+static void UpdateConf(void *p_pvPlugin) {
   struct battmon_t *poPlugin = (battmon_t *)p_pvPlugin;
   struct conf_t *poConf = &(poPlugin->oConf);
   struct gui_t *poGUI = &(poConf->oGUI);
@@ -642,9 +636,8 @@ static void UpdateConf(void *p_pvPlugin)
     poPlugin->iTimerId = 0;
   }
   SetTimer(p_pvPlugin);
-} /* UpdateConf() */
-
-/**************************************************************/
+}
+ 
 
 static void About(XfcePanelPlugin *plugin) {
   GdkPixbuf *icon;
@@ -667,7 +660,6 @@ static void About(XfcePanelPlugin *plugin) {
     g_object_unref(G_OBJECT(icon));
 }
 
-/**************************************************************/
 
 static void ChooseFont(GtkWidget *p_wPB, void *p_pvPlugin) {
   struct battmon_t *poPlugin = (battmon_t *)p_pvPlugin;
@@ -692,9 +684,8 @@ static void ChooseFont(GtkWidget *p_wPB, void *p_pvPlugin) {
     }
   }
   gtk_widget_destroy(wDialog);
-} /* ChooseFont() */
-
-/**************************************************************/
+}
+ 
 
 static void battmon_dialog_response(GtkWidget *dlg, int response,
                                     battmon_t *battmon) {
@@ -702,14 +693,70 @@ static void battmon_dialog_response(GtkWidget *dlg, int response,
   gtk_widget_destroy(dlg);
   xfce_panel_plugin_unblock_menu(battmon->plugin);
   battmon_write_config(battmon->plugin, battmon);
-  /* Do not wait the next timer to update display */
   DisplayBatteryLevel(battmon);
 }
 
-static void battmon_create_options(XfcePanelPlugin *plugin, battmon_t *poPlugin)
-/* Plugin API */
-/* Create/pop up the configuration/options GUI */
-{
+ 
+static int battmon_CreateConfigGUI(GtkWidget *vbox1, struct gui_t *p_poGUI) {
+  GtkWidget *table1;
+  GtkWidget *eventbox1;
+  GtkAdjustment *wSc_Period_adj;
+  GtkWidget *wSc_Period;
+  GtkWidget *label2;
+  GtkWidget *hseparator10;
+  GtkWidget *wPB_Font;
+  GtkWidget *hbox4;
+
+  table1 = gtk_grid_new();
+  gtk_grid_set_column_spacing(GTK_GRID(table1), 2);
+  gtk_grid_set_row_spacing(GTK_GRID(table1), 2);
+  gtk_widget_show(table1);
+  gtk_box_pack_start(GTK_BOX(vbox1), table1, FALSE, TRUE, 0);
+
+  eventbox1 = gtk_event_box_new();
+  gtk_widget_show(eventbox1);
+  gtk_grid_attach(GTK_GRID(table1), eventbox1, 1, 2, 1, 1);
+  gtk_widget_set_valign(GTK_WIDGET(eventbox1), GTK_ALIGN_CENTER);
+  gtk_widget_set_halign(GTK_WIDGET(eventbox1), GTK_ALIGN_CENTER);
+  gtk_widget_set_vexpand(GTK_WIDGET(eventbox1), TRUE);
+  gtk_widget_set_hexpand(GTK_WIDGET(eventbox1), TRUE);
+
+  wSc_Period_adj = gtk_adjustment_new(15, .25, 60 * 60 * 24, .25, 1, 0);
+  wSc_Period = gtk_spin_button_new(GTK_ADJUSTMENT(wSc_Period_adj), .25, 2);
+  gtk_widget_show(wSc_Period);
+  gtk_container_add(GTK_CONTAINER(eventbox1), wSc_Period);
+  gtk_widget_set_tooltip_text(wSc_Period,
+                              "Interval between 2 consecutive spawns");
+  gtk_spin_button_set_numeric(GTK_SPIN_BUTTON(wSc_Period), TRUE);
+
+  label2 = gtk_label_new(_("Period (s) "));
+  gtk_widget_show(label2);
+  gtk_grid_attach(GTK_GRID(table1), label2, 0, 2, 1, 1);
+  gtk_label_set_justify(GTK_LABEL(label2), GTK_JUSTIFY_LEFT);
+  gtk_widget_set_valign(label2, GTK_ALIGN_CENTER);
+
+  hseparator10 = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+  gtk_widget_show(hseparator10);
+  gtk_box_pack_start(GTK_BOX(vbox1), hseparator10, FALSE, FALSE, 0);
+
+  wPB_Font = gtk_button_new_with_label(_("Select the display font..."));
+  gtk_widget_show(wPB_Font);
+  gtk_box_pack_start(GTK_BOX(vbox1), wPB_Font, TRUE, TRUE, 0);
+  gtk_widget_set_tooltip_text(wPB_Font, "Press to change font...");
+
+  hbox4 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
+  gtk_widget_show(hbox4);
+  gtk_container_add(GTK_CONTAINER(vbox1), hbox4);
+
+  p_poGUI->wSc_Period = wSc_Period;
+  p_poGUI->wPB_Font = wPB_Font;
+
+  return 0;
+}
+
+ 
+static void battmon_create_options(XfcePanelPlugin *plugin,
+                                   battmon_t *poPlugin) {
   GtkWidget *dlg, *vbox;
   struct param_t *poConf = &(poPlugin->oConf.oParam);
   struct gui_t *poGUI = &(poPlugin->oConf.oGUI);
@@ -719,15 +766,12 @@ static void battmon_create_options(XfcePanelPlugin *plugin, battmon_t *poPlugin)
   xfce_panel_plugin_block_menu(plugin);
 
   dlg = xfce_titled_dialog_new_with_buttons(
-      _("Configuration"),
+      _("Battery Monitor Configuration"),
       GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(plugin))),
       GTK_DIALOG_DESTROY_WITH_PARENT, "gtk-close", GTK_RESPONSE_OK, NULL);
 
   g_signal_connect(dlg, "response", G_CALLBACK(battmon_dialog_response),
                    poPlugin);
-
-  xfce_titled_dialog_set_subtitle(XFCE_TITLED_DIALOG(dlg),
-                                  _("Battery Monitor"));
 
   vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, BORDER + 6);
   gtk_container_set_border_width(GTK_CONTAINER(vbox), BORDER + 4);
@@ -744,36 +788,27 @@ static void battmon_create_options(XfcePanelPlugin *plugin, battmon_t *poPlugin)
   g_signal_connect(GTK_WIDGET(poGUI->wSc_Period), "value_changed",
                    G_CALLBACK(SetPeriod), poPlugin);
 
-  if (strcmp(poConf->acFont, "(default)")) /* Default font */
+  if (strcmp(poConf->acFont, "(default)"))
     gtk_button_set_label(GTK_BUTTON(poGUI->wPB_Font), poConf->acFont);
   g_signal_connect(G_OBJECT(poGUI->wPB_Font), "clicked", G_CALLBACK(ChooseFont),
                    poPlugin);
 
   gtk_widget_show(dlg);
-} /* battmon_create_options() */
+}
 
-/**************************************************************/
-
+ 
 static void battmon_set_orientation(XfcePanelPlugin *plugin,
                                     GtkOrientation p_iOrientation,
-                                    battmon_t *poPlugin)
-/* Plugin API */
-/* Invoked when the panel changes orientation */
-{
+                                    battmon_t *poPlugin) {
   struct monitor_t *poMonitor = &(poPlugin->oMonitor);
 
   gtk_orientable_set_orientation(GTK_ORIENTABLE(poMonitor->wBox),
                                  p_iOrientation);
   gtk_orientable_set_orientation(GTK_ORIENTABLE(poMonitor->wImgBox),
                                  p_iOrientation);
-
   SetMonitorFont(poPlugin);
+}
 
-} /* battmon_set_orientation() */
-
-/**************************************************************/
-// call: xfce4-panel --plugin-event=battmon-X:refresh:bool:true
-//    where battmon-X is the battmon widget id (e.g. battmon-7)
 
 static gboolean battmon_remote_event(XfcePanelPlugin *plugin, const gchar *name,
                                      const GValue *value, battmon_t *battmon) {
@@ -786,11 +821,9 @@ static gboolean battmon_remote_event(XfcePanelPlugin *plugin, const gchar *name,
     }
     return TRUE;
   }
-
   return FALSE;
-} /* battmon_remote_event() */
+}
 
-/**************************************************************/
 
 static void battmon_construct(XfcePanelPlugin *plugin) {
   battmon_t *battmon;

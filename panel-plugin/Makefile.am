@@ -17,9 +17,7 @@ libappletbatt_la_LIBADD =						\
 	@LIBXFCE4UI_LIBS@
 
 libappletbatt_la_SOURCES =		\
-	main.c			\
-	config_gui.h		\
-	config_gui.c
+	main.c
 
 desktopdir = $(datadir)/xfce4/panel/plugins
 desktop_DATA = applet-batt.desktop
