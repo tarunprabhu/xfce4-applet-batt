@@ -87,8 +87,6 @@ int battmon_CreateConfigGUI (GtkWidget *vbox1,
     label2 = gtk_label_new (_("Period (s) "));
     gtk_widget_show (label2);
     gtk_grid_attach (GTK_GRID (table1), label2, 0, 2, 1, 1);
-        //(GtkAttachOptions) (GTK_FILL),
-        //(GtkAttachOptions) (0), 0, 0);
     gtk_label_set_justify (GTK_LABEL (label2), GTK_JUSTIFY_LEFT);
     gtk_widget_set_valign (label2, GTK_ALIGN_CENTER);
 

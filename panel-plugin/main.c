@@ -129,6 +129,7 @@ static battstatus_t GetBatteryStatus() {
     else if(strcmp(status, "Discharging\n") == 0)
       return BattStatus_Discharging;
     return BattStatus_Unknown;
+    fclose(fp);
   }
   
   return BattStatus_NoBatt;
@@ -158,8 +159,6 @@ static int GetBatteryTime(battstatus_t status, int* hrs, int* mins) {
   const char* fileEnergy = "/sys/class/power_supply/BAT0/energy_now";
   const char* fileCurrent = "/sys/class/power_supply/BAT0/current_now";
   const char* filePower = "/sys/class/power_supply/BAT0/power_now";
-  FILE *fpTotal = NULL;
-  FILE *fpNow = NULL;
   long total = 0, now = 1, full = 0;
   double ratio = 0.0;
   int read = 0;
@@ -168,14 +167,14 @@ static int GetBatteryTime(battstatus_t status, int* hrs, int* mins) {
     total = ReadFile(fileCharge);
     now = ReadFile(fileCurrent);
     full = ReadFile(fileChargeFull);
-    if(total != -1 && now != -1 && full != -1) {
+    if(total != -1 && now != -1 && full != -1 && now > 0) {
       read = 1;
       ratio = (float)(full - total) / (float) now;
     }
   } else if(status == BattStatus_Discharging) {
     total = ReadFileAlt(fileCharge, fileEnergy);
     now = ReadFileAlt(fileCurrent, filePower);
-    if(total != -1 && now != -1) {
+    if(total != -1 && now != -1 && now > 0) {
       read = 1;
       ratio = (float) total / (float) now;
     }
@@ -194,41 +193,33 @@ static int DisplayBatteryLevel(struct battmon_t *p_poPlugin)
 /* Launch the command, get its output and display it in the panel-docked
    text field */
 {
-  const char *colors[20] = {"#FF0000", "#FF1A00", "#FF3500", "#FF5000",
-                            "#FF6B00", "#FF8600", "#FFA100", "#FFBB00",
-                            "#FFD600", "#FFF100", "#F1FF00", "#D6FF00",
-                            "#BBFF00", "#A1FF00", "#86FF00", "#6BFF00",
-                            "#50FF00", "#35FF00", "#1AFF00", "#00FF00"};
-  const int steps = 20;
   struct param_t *poConf = &(p_poPlugin->oConf.oParam);
   struct monitor_t *poMonitor = &(p_poPlugin->oMonitor);
-  const char* img_dir = "/usr/share/icons/hicolor/24x24/apps/";
-  const char* img_prefix = "xfce4-battery-";
-  const char* space = "                ";
+  const char* dir = "/usr/share/icons/gnome/24x24/status";
+  const char* icon = NULL;
   int percent = 0, hrs = -1, mins = -1;
   battstatus_t status = BattStatus_NoBatt;
   char img[PATH_MAX];
   char text[5] = "----";
   char class[8];
-  const char* icon = NULL;
   
   percent = GetBatteryPercent();
   status = GetBatteryStatus();
   switch(status) {
   case BattStatus_Full:
-    icon = "full-charging";
+    icon = "battery-full-charging";
     break;
   case BattStatus_Charging:
     switch(GetBatteryLevel(percent)) {
     case BattLevel_Full:
-      icon = "full-charging";
+      icon = "battery-full-charging";
       break;
     case BattLevel_OK:
-      icon = "ok-charging";
+      icon = "battery-good-charging";
       break;
     case BattLevel_Low:
     case BattLevel_Critical:
-      icon = "low-charging";
+      icon = "battery-low-charging";
       break;
     default:
       /* Should never get here */
@@ -238,16 +229,16 @@ static int DisplayBatteryLevel(struct battmon_t *p_poPlugin)
   case BattStatus_Discharging:
     switch(GetBatteryLevel(percent)) {
     case BattLevel_Full:
-      icon = "full";
+      icon = "battery-full-charged";
       break;
     case BattLevel_OK:
-      icon = "ok";
+      icon = "battery-good";
       break;
     case BattLevel_Low:
-      icon = "low";
+      icon = "battery-low";
       break;
     case BattLevel_Critical:
-      icon = "critical";
+      icon = "battery-caution";
       break;
     default:
       /* Should never get here */
@@ -255,10 +246,10 @@ static int DisplayBatteryLevel(struct battmon_t *p_poPlugin)
     }
     break;
   case BattStatus_Unknown:
-    icon = "missing";
+    icon = "battery-full-charged";
     break;
   case BattStatus_NoBatt:
-    icon = "missing"; 
+    icon = "battery-missing"; 
     break;
   default:
     /* Should never get here */
@@ -267,21 +258,30 @@ static int DisplayBatteryLevel(struct battmon_t *p_poPlugin)
 
   
   if(GetBatteryTime(status, &hrs, &mins)) {
-    if(status == BattStatus_Discharging) {
+    switch(status) {
+    case BattStatus_Discharging:
       snprintf(class, sizeof(class), "p%d", percent/5);
-    } else {
+      break;
+    case BattStatus_Charging:
+      snprintf(class, sizeof(class), "%s", "pblue");
+      break;
+    default:
       snprintf(class, sizeof(class), "%s", "pgray");
+      break;
     }
     snprintf(text, sizeof(text), "%1d:%02d", hrs, mins);
   } else {
-    if(status == BattStatus_Charging) {
+    switch(status) {
+    case BattStatus_Charging:
       snprintf(class, sizeof(class), "%s", "pblue");
-    } else {
+      break;
+    default:
       snprintf(class, sizeof(class), "%s", "pgray");
+      break;
     }
   }
 
-  snprintf(img, PATH_MAX, "%s%s%s%s", img_dir, img_prefix, icon, ".png");
+  snprintf(img, PATH_MAX, "%s/%s%s", dir, icon, ".png");
 
   gtk_widget_set_name(poMonitor->wValue, class);
   gtk_label_set_text(GTK_LABEL(poMonitor->wValue), text);
@@ -315,7 +315,6 @@ static gboolean SetTimer(void *p_pvPlugin)
   return TRUE;
 } /* SetTimer() */
 
-/**************************************************************/
 
 static battmon_t *battmon_create_control(XfcePanelPlugin *plugin)
 /* Plugin API */
@@ -482,7 +481,6 @@ static battmon_t *battmon_create_control(XfcePanelPlugin *plugin)
   return poPlugin;
 } /* battmon_create_control() */
 
-/**************************************************************/
 
 static void battmon_free(XfcePanelPlugin *plugin, battmon_t *poPlugin)
 /* Plugin API */
@@ -496,7 +494,6 @@ static void battmon_free(XfcePanelPlugin *plugin, battmon_t *poPlugin)
   g_free(poPlugin);
 } /* battmon_free() */
 
-/**************************************************************/
 
 static int SetMonitorFont(void *p_pvPlugin) {
   struct battmon_t *poPlugin = (battmon_t *)p_pvPlugin;
@@ -559,17 +556,7 @@ static int SetMonitorFont(void *p_pvPlugin) {
   return (0);
 } /* SetMonitorFont() */
 
-/**************************************************************/
-
-/* Configuration Keywords */
-#define CONF_USE_LABEL "UseLabel"
-#define CONF_LABEL_TEXT "Text"
-#define CONF_CMD "Command"
-#define CONF_UPDATE_PERIOD "UpdatePeriod"
-#define CONF_FONT "Font"
-
-/**************************************************************/
-
+      
 static void battmon_read_config(XfcePanelPlugin *plugin, battmon_t *poPlugin)
 /* Plugin API */
 /* Executed when the panel is started - Read the configuration
@@ -590,18 +577,15 @@ static void battmon_read_config(XfcePanelPlugin *plugin, battmon_t *poPlugin)
   if (!rc)
     return;
 
-  poConf->iPeriod_ms =
-      xfce_rc_read_int_entry(rc, (CONF_UPDATE_PERIOD), 30 * 1000);
+  poConf->iPeriod_ms = xfce_rc_read_int_entry(rc, "UpdatePeriod", 30 * 1000);
 
-  if ((pc = xfce_rc_read_entry(rc, (CONF_FONT), NULL))) {
+  if ((pc = xfce_rc_read_entry(rc, "Font", NULL))) {
     g_free(poConf->acFont);
     poConf->acFont = g_strdup(pc);
   }
 
   xfce_rc_close(rc);
 } /* battmon_read_config() */
-
-/**************************************************************/
 
 static void battmon_write_config(XfcePanelPlugin *plugin, battmon_t *poPlugin)
 /* Plugin API */
@@ -622,9 +606,9 @@ static void battmon_write_config(XfcePanelPlugin *plugin, battmon_t *poPlugin)
 
   TRACE("battmon_write_config()\n");
 
-  xfce_rc_write_int_entry(rc, CONF_UPDATE_PERIOD, poConf->iPeriod_ms);
+  xfce_rc_write_int_entry(rc, "Update Period", poConf->iPeriod_ms);
 
-  xfce_rc_write_entry(rc, CONF_FONT, poConf->acFont);
+  xfce_rc_write_entry(rc, "Font", poConf->acFont);
 
   xfce_rc_close(rc);
 } /* battmon_write_config() */
