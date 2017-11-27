@@ -109,6 +109,7 @@ static int GetBatteryPercent() {
   
   if(fp = fopen(file, "r")) {
     fscanf(fp, "%d", &percent);
+    fclose(fp);
     return percent;
   }
 
@@ -122,6 +123,7 @@ static battstatus_t GetBatteryStatus() {
   
   if(fp = fopen(file, "r")) {
     fgets(status, 256, fp);
+    fclose(fp);
     if(strcmp(status, "Full\n") == 0)
       return BattStatus_Full;
     else if(strcmp(status, "Charging\n") == 0)
@@ -129,7 +131,6 @@ static battstatus_t GetBatteryStatus() {
     else if(strcmp(status, "Discharging\n") == 0)
       return BattStatus_Discharging;
     return BattStatus_Unknown;
-    fclose(fp);
   }
   
   return BattStatus_NoBatt;
@@ -195,11 +196,9 @@ static int DisplayBatteryLevel(struct battmon_t *p_poPlugin)
 {
   struct param_t *poConf = &(p_poPlugin->oConf.oParam);
   struct monitor_t *poMonitor = &(p_poPlugin->oMonitor);
-  const char* dir = "/usr/share/icons/gnome/24x24/status";
   const char* icon = NULL;
   int percent = 0, hrs = -1, mins = -1;
   battstatus_t status = BattStatus_NoBatt;
-  char img[PATH_MAX];
   char text[5] = "----";
   char class[8];
   
@@ -281,12 +280,11 @@ static int DisplayBatteryLevel(struct battmon_t *p_poPlugin)
     }
   }
 
-  snprintf(img, PATH_MAX, "%s/%s%s", dir, icon, ".png");
-
   gtk_widget_set_name(poMonitor->wValue, class);
   gtk_label_set_text(GTK_LABEL(poMonitor->wValue), text);
-  gtk_image_set_from_file(GTK_IMAGE(poMonitor->wImage), img);
-  
+  gtk_image_set_from_icon_name(GTK_IMAGE(poMonitor->wImage), icon,
+                               GTK_ICON_SIZE_LARGE_TOOLBAR);
+
   gtk_widget_show(poMonitor->wImage);
   gtk_widget_show(poMonitor->wValue);
 
